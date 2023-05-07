@@ -187,9 +187,6 @@ function timer_plus() {
         ctx.fillText(game.score + "点",width/2 - 150 ,height/2+40);
 
         game.status = 0;
-        Board = initial_board_make();
-        Board = random_board(Board);
-
         game.gameend = 1;
         game.gameendtimecount = setInterval(gameendtime_wait, 2000);
     }
@@ -219,6 +216,9 @@ function gametimer_wait(){
 addEventListener('mousedown', mousedownfunc);
 function mousedownfunc(event) {
     if (game.status == 0 && game.gameend == 0) {
+        Board = initial_board_make();
+        Board = random_board(Board);
+
         whitecanvas();
         masume_color("whitesmoke");
         formulas_color_update("#CCCCCC");
