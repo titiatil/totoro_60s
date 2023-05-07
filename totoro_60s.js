@@ -20,18 +20,84 @@ const game = {
     timecount: null,
     timewait: 3,
     timewaitcount: null,
+    gameend : 0, // 0:通常, 1:終了直後
+    gameendtimecount : null,
     score:0,
     y: -1,
     x: -1,
-    choice: 0,
+    choice: 0, // 1:選択中、 0:選択していない
     Used : [],
     now_y : -1,
     now_x : -1,
-    choices_list : []
+    choices_list : [],
+    Erased_formulas : {}
 }
 
 function title_screen() {
     masume_color("whitesmoke");
+
+    const nowchoice_div = document.createElement("div");
+
+    // div要素に必要なプロパティを設定
+    nowchoice_div.id = "nowchoice_div";
+    nowchoice_div.className = "nowchoice";
+
+    nowchoice_div.style.position = 'absolute';
+    nowchoice_div.style.left = '850px';
+    nowchoice_div.style.top = '50px';
+
+    nowchoice_div.style.fontSize = '24px';
+
+    // div要素をHTMLドキュメントに追加
+    document.body.appendChild(nowchoice_div);
+
+    const time_div = document.createElement("div");
+
+    // div要素に必要なプロパティを設定
+    time_div.id = "time_div";
+    time_div.className = "time";
+    time_div.textContent = "time: " + game.time;
+
+    time_div.style.position = 'absolute';
+    time_div.style.left = '850px';
+    time_div.style.top = '100px';
+
+    time_div.style.fontSize = '24px';
+
+    // div要素をHTMLドキュメントに追加
+    document.body.appendChild(time_div);
+
+    const score_div = document.createElement("div");
+
+    score_div.id = "score_div";
+    score_div.className = "score";
+    score_div.textContent = "score: " + game.score;
+
+    score_div.style.position = 'absolute';
+    score_div.style.left = '850px';
+    score_div.style.top = '150px';
+
+    score_div.style.fontSize = '24px';
+
+    // div要素をHTMLドキュメントに追加
+    document.body.appendChild(score_div);
+    game.Used = initial_used_make();
+
+    const erased_div = document.createElement("div");
+
+    erased_div.id = "erased_div";
+    erased_div.className = "erased";
+
+    erased_div.style.position = 'absolute';
+    erased_div.style.left = '850px';
+    erased_div.style.top = '250px';
+
+    erased_div.style.fontSize = '24px';
+
+    // div要素をHTMLドキュメントに追加
+    document.body.appendChild(erased_div);
+
+    game.Used = initial_used_make();
 }
 
 // マス内の文字を表示
@@ -57,7 +123,6 @@ function initial_board_make() {
     }
     return Board;
 }
-
 
 function initial_used_make() {
     // 盤面を初期化
@@ -102,12 +167,31 @@ function random_board(Board) {
     return Board;
 }
 
+function gameendtime_wait(){
+    game.gameend = 0;
+    clearInterval(game.gameendtimecount);
+    game.gameendtimecount = null;
+
+}
+
 function timer_plus() {
     game.time -= 1;
     time_div.textContent =  "time: " + game.time;
 
     if (game.time == 0) {
         clearInterval(game.timecount);
+        game.time="-";
+
+        ctx.fillStyle = "#654321";
+        ctx.font = "bold 160px serif";
+        ctx.fillText(game.score + "点",width/2 - 150 ,height/2+40);
+
+        game.status = 0;
+        Board = initial_board_make();
+        Board = random_board(Board);
+
+        game.gameend = 1;
+        game.gameendtimecount = setInterval(gameendtime_wait, 2000);
     }
 }
 
@@ -124,6 +208,7 @@ function gametimer_wait(){
     if (game.timewait == 0){
         clearInterval(game.timewaitcount);
         game.status = 1;
+        game.timewait = 3;
         whitecanvas();
         masume_color("whitesmoke");
         formulas_color_update("#CCCCCC");
@@ -133,7 +218,7 @@ function gametimer_wait(){
 
 addEventListener('mousedown', mousedownfunc);
 function mousedownfunc(event) {
-    if (game.status == 0) {
+    if (game.status == 0 && game.gameend == 0) {
         whitecanvas();
         masume_color("whitesmoke");
         formulas_color_update("#CCCCCC");
@@ -141,7 +226,6 @@ function mousedownfunc(event) {
         ctx.fillStyle = "#111111";
         ctx.font = "bold 320px serif";
         ctx.fillText(game.timewait,width/2 - 100 ,height/2 + 120);
-
 
         game.timewaitcount = setInterval(gametimer_wait, 1000);
         game.status = 2;
@@ -155,8 +239,9 @@ function mousedownfunc(event) {
         ctx.strokeRect(width / masume * x, height / masume * y, width / masume - 5, height / masume - 5);
 
         game.Used[y][x] = 1;
-
         game.choices_list.push([x, y]);
+
+        nowchoice_div.textContent = "choosing : " + formula_make(game.choices_list);
 
         game.now_y = y;
         game.now_x = x;
@@ -179,19 +264,29 @@ function masume_color(color_name){
 
 addEventListener('mouseup', mouseupfunc);
 function mouseupfunc(event) {
+    nowchoice_div.textContent = ""
     if (game.choice == 1) {
         game.choice = 0;
-
-        //console.log(game.choices_list);
 
         let made_formula = formula_make(game.choices_list);
         let tautjudge = taut_judge_formula(made_formula);
 
         // トートロジーならスコアを増やす
         if (tautjudge == 1) {
-            game.score += 10
+            if (made_formula in game.Erased_formulas){
+                game.Erased_formulas[made_formula]+=1;
+                game.score += 1
+            }
+            else{
+                game.Erased_formulas[made_formula]=1;
+                game.score += made_formula.length;
+            }
 
-            // Erased_formulae.push(made_formula);
+            erased_div.innerHTML = "erased formula: <br>"
+
+            for (let eformula in game.Erased_formulas){
+                erased_div.innerHTML+= eformula + ": " + game.Erased_formulas[eformula] + "<br>"
+            }
 
             for (c of game.choices_list) {
                 Board[c[0]][c[1]] = "";
@@ -205,7 +300,6 @@ function mouseupfunc(event) {
         masume_color("azure");
         formulas_color_update("#000000");
         score_div.textContent = "score: " + game.score;
-
     }
 }
 
@@ -224,6 +318,7 @@ function mousemovefunc(event) {
             game.Used[y][x] = 1;
 
             game.choices_list.push([x, y]);
+            nowchoice_div.textContent = "choosing : " + formula_make(game.choices_list);
 
             game.now_y = y;
             game.now_x = x;
@@ -239,40 +334,15 @@ formulas_color_update("#CCCCCC");
 
 function gamestart() {
     masume_color("azure");
-
-    const time_div = document.createElement("div");
-
-    // div要素に必要なプロパティを設定
-    time_div.id = "time_div";
-    time_div.className = "time";
-    time_div.textContent = "time: " + game.time;
-
-    time_div.style.position = 'absolute';
-    time_div.style.left = '850px';
-    time_div.style.top = '50px';
-
-    time_div.style.fontSize = '24px';
-
-    // div要素をHTMLドキュメントに追加
-    document.body.appendChild(time_div);
     formulas_color_update("#000000");
-    game.timecount = setInterval(timer_plus, 1000);
-
-    const score_div = document.createElement("div");
-
-    score_div.id = "score_div";
-    score_div.className = "score: ";
-    score_div.textContent = "score: " + game.score;
-
-    score_div.style.position = 'absolute';
-    score_div.style.left = '850px';
-    score_div.style.top = '100px';
-
-    score_div.style.fontSize = '24px';
-
-    // div要素をHTMLドキュメントに追加
-    document.body.appendChild(score_div);
+    game.score = 0;
+    game.time = 60;
+    game.choices_list=[];
+    game.timecount= null;
+    game.timewait= 3;
+    game.timewaitcount= null;
     game.Used = initial_used_make();
+    game.timecount = setInterval(timer_plus, 1000);
 }
 
 // choices_listに入っている座標から論理式を再現
