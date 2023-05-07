@@ -231,7 +231,7 @@ function mousedownfunc(event) {
         game.status = 2;
     }
 
-    if (game.status == 1 && game.choice==0) {
+    if (game.status == 1 && game.choice==0 && 0<=game.y && game.y<height && 0<=game.x && game.x<width) {
         game.choice = 1;
 
         let y = Math.floor(game.y / (width / masume));
