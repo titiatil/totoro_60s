@@ -342,6 +342,7 @@ function gamestart() {
     game.timewait= 3;
     game.timewaitcount= null;
     game.Used = initial_used_make();
+    game.Erased_formulas = {};
     game.timecount = setInterval(timer_plus, 1000);
 }
 
