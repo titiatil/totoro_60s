@@ -11,9 +11,7 @@ const symbol_variable = ["p", "q"]; // とりあえず命題変数は二つに�
 const symbol_connective1 = ["￢"];
 const symbol_connective2 = ["→", "∧", "∨"];
 
-
-// console.log(width, height);
-
+// gameに登場する記号たち
 const game = {
     status: 0, // 0:タイトル画面, 1:ゲーム画面, 2:ゲーム開始待ち, 3:ゲームオーバー
     time: 60, // 60からカウント
@@ -22,10 +20,13 @@ const game = {
     timewaitcount: null,
     gameend : 0, // 0:通常, 1:終了直後
     gameendtimecount : null,
+    bomb : null,
+    bombcount : 200,
     score:0,
     y: -1,
     x: -1,
     choice: 0, // 1:選択中、 0:選択していない
+    Board : [],
     Used : [],
     now_y : -1,
     now_x : -1,
@@ -100,19 +101,24 @@ function title_screen() {
     game.Used = initial_used_make();
 }
 
+// Board[y][x]のtextを表示
+function board_text(y,x,color_name){
+    ctx.fillStyle = color_name;
+    ctx.font = "bold 32px serif";
+    ctx.fillText(game.Board[y][x], width / masume * y + width / masume / 2 - 15, height / masume * x + height / masume / 2 + 10);
+}
+
 // マス内の文字を表示
 function formulas_color_update(color_name) {
     for (let y = 0; y < masume; y++) {
         for (let x = 0; x < masume; x++) {
-            ctx.fillStyle = color_name;
-            ctx.font = "bold 32px serif";
-            ctx.fillText(Board[y][x], width / masume * y + width / masume / 2 - 15, height / masume * x + height / masume / 2 + 10);
-        }
+            board_text(y,x,color_name);
+       }
     }
 }
 
+// 盤面を初期化。全て空文字にしている。
 function initial_board_make() {
-    // 盤面を初期化
     const Board = []; //10*10の空の盤面
     for (let y = 0; y < masume; y++) {
         let Board2 = []
@@ -124,8 +130,8 @@ function initial_board_make() {
     return Board;
 }
 
+// Usedを初期化。 全ての要素を0に。
 function initial_used_make() {
-    // 盤面を初期化
     const Used = []; //10*10の空の盤面
     for (let y = 0; y < masume; y++) {
         let Used2 = []
@@ -137,7 +143,7 @@ function initial_used_make() {
     return Used;
 }
 
-
+// 空文字の要素をrandomに変化。
 function random_board(Board) {
     for (let y = 0; y < masume; y++) {
         for (let x = 0; x < masume; x++) {
@@ -167,13 +173,14 @@ function random_board(Board) {
     return Board;
 }
 
+// ゲーム終了後三秒間経ったらリスタートするように。
 function gameendtime_wait(){
     game.gameend = 0;
     clearInterval(game.gameendtimecount);
     game.gameendtimecount = null;
-
 }
 
+// ゲーム開始後の時間を制御
 function timer_plus() {
     game.time -= 1;
     time_div.textContent =  "time: " + game.time;
@@ -192,6 +199,7 @@ function timer_plus() {
     }
 }
 
+// ボタンを押してから三秒後にゲーム開始。
 function gametimer_wait(){
     game.timewait -= 1;
     whitecanvas();
@@ -216,8 +224,8 @@ function gametimer_wait(){
 addEventListener('mousedown', mousedownfunc);
 function mousedownfunc(event) {
     if (game.status == 0 && game.gameend == 0) {
-        Board = initial_board_make();
-        Board = random_board(Board);
+        game.Board = initial_board_make();
+        game.Board = random_board(game.Board);
 
         whitecanvas();
         masume_color("whitesmoke");
@@ -236,6 +244,7 @@ function mousedownfunc(event) {
 
         let y = Math.floor(game.y / (width / masume));
         let x = Math.floor(game.x / (height / masume));
+        ctx.strokeStyle = 'black';
         ctx.strokeRect(width / masume * x, height / masume * y, width / masume - 5, height / masume - 5);
 
         game.Used[y][x] = 1;
@@ -248,23 +257,52 @@ function mousedownfunc(event) {
     }
 }
 
+// 全体を白にする。
 function whitecanvas(){
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, width, height);
 }
 
+// 全てのマスの背景をcolor_nameで塗る
 function masume_color(color_name){
     for (let y = 0; y < masume; y++) {
         for (let x = 0; x < masume; x++) {
-            ctx.fillStyle = color_name;
-            ctx.fillRect(width / masume * y, height / masume * x, width / masume - 5, height / masume - 5);
+            masume_board_color(y,x,color_name)
         }
+    }
+}
+
+// Board[y][x]の背景をcolor_nameで塗る
+function masume_board_color(y,x,color_name){
+    ctx.fillStyle = color_name;
+    ctx.fillRect(width / masume * y, height / masume * x, width / masume - 5, height / masume - 5);
+}
+
+function toHex(v) {
+    return  (('00' + v.toString(16).toUpperCase()).substr(-2));
+}
+
+// 消したときの演出
+function bomb(){
+    let appearcolor=toHex(game.bombcount+55)
+
+    for (c of game.choices_list){
+        masume_board_color(c[0],c[1],"azure");
+        board_text(c[0],c[1],"#" + appearcolor + appearcolor + appearcolor);
+    }
+
+    game.bombcount-=10
+
+    if (game.bombcount == 0){
+        game.bombcount = 200;
+        clearInterval(game.bomb);
     }
 }
 
 addEventListener('mouseup', mouseupfunc);
 function mouseupfunc(event) {
     nowchoice_div.textContent = ""
+
     if (game.choice == 1) {
         game.choice = 0;
 
@@ -282,24 +320,38 @@ function mouseupfunc(event) {
                 game.score += made_formula.length;
             }
 
-            erased_div.innerHTML = "erased formula: <br>"
+            erased_div.innerHTML = "erased formulae: <br>"
 
             for (let eformula in game.Erased_formulas){
                 erased_div.innerHTML+= eformula + ": " + game.Erased_formulas[eformula] + "<br>"
             }
 
             for (c of game.choices_list) {
-                Board[c[0]][c[1]] = "";
+                game.Board[c[0]][c[1]] = "";
             }
-            Board = random_board(Board);
+
+            game.Board = random_board(game.Board);
+            game.Used = initial_used_make();
+            game.bomb = setInterval(bomb, 10);
+
+            setTimeout(() => {
+                whitecanvas();
+                masume_color("azure");
+                formulas_color_update("#000000");
+
+                game.choices_list = [];
+            }, 200);
+            score_div.textContent = "score: " + game.score;
         }
 
-        game.Used = initial_used_make();
-        game.choices_list = [];
-        whitecanvas();
-        masume_color("azure");
-        formulas_color_update("#000000");
-        score_div.textContent = "score: " + game.score;
+        else{
+            game.Used = initial_used_make();
+            game.choices_list = [];
+            whitecanvas();
+            masume_color("azure");
+            formulas_color_update("#000000");
+            score_div.textContent = "score: " + game.score;
+        }
     }
 }
 
@@ -313,6 +365,7 @@ function mousemovefunc(event) {
         let x = Math.floor(game.x / (height / masume));
 
         if ((game.now_y == -1 && game.now_x == -1)||(y == game.now_y && Math.abs(game.now_x - x) == 1 && game.Used[y][x] == 0 ) || (x == game.now_x && Math.abs(game.now_y - y) == 1 && game.Used[y][x] == 0)){
+            ctx.strokeStyle = 'black';
             ctx.strokeRect(width / masume * x, height / masume * y, width / masume - 5, height / masume - 5);
 
             game.Used[y][x] = 1;
@@ -328,8 +381,8 @@ function mousemovefunc(event) {
 
 // タイトル画面
 title_screen();
-let Board = initial_board_make();
-Board = random_board(Board);
+game.Board = initial_board_make()
+game.Board = random_board(game.Board);
 formulas_color_update("#CCCCCC");
 
 function gamestart() {
@@ -351,7 +404,7 @@ function gamestart() {
 function formula_make(choices_list) {
     let made_formula = "";
     for (let c of choices_list) {
-        made_formula += Board[c[0]][c[1]];
+        made_formula += game.Board[c[0]][c[1]];
     }
     return made_formula;
 }
