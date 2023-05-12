@@ -400,6 +400,8 @@ function gamestart() {
     game.timecount = setInterval(timer_plus, 1000);
 }
 
+
+
 // choices_listに入っている座標から論理式を再現
 function formula_make(choices_list) {
     let made_formula = "";
@@ -412,7 +414,7 @@ function formula_make(choices_list) {
 // ∧が二つ続いたり、変数が二つ続いたりしていないかを判定
 // カッコ判定はしていないので、well-formed-formulaかを判定しているわけではない
 function pp_judge(formula) {
-    var LEN = formula.length;
+    let LEN = formula.length;
 
     // 一文字目が")"ではダメ
     if (formula[0] == ")") {
@@ -430,7 +432,7 @@ function pp_judge(formula) {
     if (formula[LEN - 1] == "(" || formula[LEN - 1] == "￢") {
         return 0;
     }
-    for (var i = 0; i < LEN - 1; i += 1) {
+    for (let i = 0; i < LEN - 1; i += 1) {
         // "()"と、カッコの間に何も入らないのはダメ。
         if (formula[i] == "(" && formula[i + 1] == ")") {
             return 0;
@@ -478,7 +480,7 @@ function pp_judge(formula) {
 
 // 付値{0, 1}を代入した古典論理式のトートロジー判定
 function classical_tautology_judge(formula) {
-    var LEN = formula.length;
+    let LEN = formula.length;
 
     // 一文字のときを判定
     if (LEN == 1) {
@@ -490,15 +492,10 @@ function classical_tautology_judge(formula) {
         }
     }
 
-    // 全体が()に挟まれているときは、その間の論理式を判定
-    if (formula[0] == "(" && formula[LEN - 1] == ")") {
-        return classical_tautology_judge(formula.substring(1, LEN - 1));
-    }
-
-    var br = 0; // 何個のカッコに入っているか
-    var arind = -1; // →がある一番始めのindex
-    var juncind = -1 // ∧や∨がある一番後ろのindex
-    for (var i = 0; i < LEN; i += 1) {
+    let br = 0; // 何個のカッコに入っているか
+    let arind = -1; // →がある一番始めのindex
+    let juncind = -1; // ∧や∨がある一番後ろのindex
+    for (let i = 0; i < LEN; i += 1) {
         if (formula[i] == "(") {
             br += 1;
         }
@@ -524,17 +521,22 @@ function classical_tautology_judge(formula) {
         return 0;
     }
 
+    // 全体が()に挟まれているときは、その間の論理式を判定
+    if (arind == -1 && juncind == -1 && formula[0] == "(" && formula[LEN - 1] == ")") {
+        return classical_tautology_judge(formula.substring(1, LEN - 1));
+    }
+
     // カッコに入っていない→があったなら、一番最初の→で二つに分けて、￢f∨g
     if (arind != -1) {
-        var f = formula.substring(0, arind);
-        var g = formula.substring(arind + 1);
+        let f = formula.substring(0, arind);
+        let g = formula.substring(arind + 1);
 
         return (1 ^ classical_tautology_judge(f)) | classical_tautology_judge(g);
     }
     // 一番最後の∧か∨で二つに分けて再帰
     else if (juncind != -1) {
-        var f = formula.substring(0, juncind);
-        var g = formula.substring(juncind + 1);
+        let f = formula.substring(0, juncind);
+        let g = formula.substring(juncind + 1);
 
         if (formula[juncind] == "∧") {
             return classical_tautology_judge(f) & classical_tautology_judge(g);
@@ -543,7 +545,7 @@ function classical_tautology_judge(formula) {
             return classical_tautology_judge(f) | classical_tautology_judge(g);
         }
     }
-    // 一文字が￢なら再帰
+    // 一文字目が￢なら再帰
     else if (formula[0] == "￢") {
         return 1 ^ classical_tautology_judge(formula.substring(1, LEN));
     }
@@ -551,18 +553,18 @@ function classical_tautology_judge(formula) {
 }
 
 function taut_judge_formula(formula) {
-    var tautjudge = 1;
+    let tautjudge = 1;
     if (pp_judge(formula) == 0) {
         tautjudge = 0;
     }
 
-    for (var p of ['0', '1']) {
+    for (let p of ['0', '1']) {
         if (tautjudge == 0) {
             break;
         }
-        for (var q of ['0', '1']) {
-            var formula_p = formula.replace(/p/g, p);
-            var formula_pq = formula_p.replace(/q/g, q);
+        for (let q of ['0', '1']) {
+            let formula_p = formula.replace(/p/g, p);
+            let formula_pq = formula_p.replace(/q/g, q);
 
             if (classical_tautology_judge(formula_pq) == 0) {
                 tautjudge = 0;
