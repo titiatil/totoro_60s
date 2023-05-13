@@ -352,7 +352,6 @@ function whitecanvas(){
 function masume_color(color_name1, color_name2){
     for (let y = 0; y < masume; y++) {
         for (let x = 0; x < masume; x++) {
-            console.log(game.Board);
             if (symbol_variable.includes(game.Board[y][x])) {
                 masume_board_color(y,x,color_name1)
             }
