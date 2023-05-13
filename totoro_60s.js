@@ -6,7 +6,8 @@ let height = canvas.height;
 let masume = 10; // 10*10のマス目
 
 // 各記号
-const symbol_bracket = ["(", ")"];
+const symbol_open_bracket = ["("];
+const symbol_close_bracket = [")"];
 const symbol_variable = ["p", "q"]; // とりあえず命題変数は二つにしている。いずれ三つ以上に拡張するならこの書き方は良くないが。
 const symbol_connective1 = ["￢"];
 const symbol_connective2 = ["→", "∧", "∨"];
@@ -31,11 +32,14 @@ const game = {
     now_y : -1,
     now_x : -1,
     choices_list : [],
-    Erased_formulas : {}
+    Erased_formulas : {},
+
+    openbr:0,
+    closebr:0
 }
 
 function title_screen() {
-    masume_color("whitesmoke");
+    masume_color("whitesmoke","whitesmoke");
 
     const nowchoice_div = document.createElement("div");
 
@@ -119,6 +123,9 @@ function formulas_color_update(color_name) {
 
 // 盤面を初期化。全て空文字にしている。
 function initial_board_make() {
+    game.openbr = 0;
+    game.closebr = 0;
+
     const Board = []; //10*10の空の盤面
     for (let y = 0; y < masume; y++) {
         let Board2 = []
@@ -145,29 +152,107 @@ function initial_used_make() {
 
 // 空文字の要素をrandomに変化。
 function random_board(Board) {
+    const choice_constant = 20;
+    const choice_br_constant = 100;
+    const lx = [0, 0, 1, -1];
+    const ly = [1, -1, 0, 0];
+
     for (let y = 0; y < masume; y++) {
         for (let x = 0; x < masume; x++) {
+            if (Board[y][x] != ""){
+                continue;
+            }
 
             // 入れる文字種類の調整。
             // カッコ・命題変数・￢・∧∨→が1:4:1:2になるようにしているが、その比率が良いのかは謎。
-            var symbol_choice = Math.floor(Math.random() * 8)
+            let Choice_value = [110, 110, 800, 200, 400]; // {(}, {)}, {p,q}, {￢}, {⋀∨→}
 
-            if (symbol_choice == 0) {
-                board_randchoice = symbol_bracket[Math.floor(Math.random() * symbol_bracket.length)];
+
+            for (u = 0; u<4; u++){
+                let z = y + lx[u];
+                let w = x + ly[u];
+
+                if (0<=z && 0<=w && z<masume && w<masume){
+
+                    if (game.Board[z][w] == "("){
+                        Choice_value[0] -= choice_constant * 1 * 1
+                        Choice_value[1] -= choice_constant * 1 * 2
+                        Choice_value[2] -= choice_constant * 8 * 1
+                        Choice_value[3] -= choice_constant * 2 * 1
+                        Choice_value[4] -= choice_constant * 4 * 1
+                    }
+
+                    else if (game.Board[z][w] == ")"){
+                        Choice_value[0] -= choice_constant * 1 * 2
+                        Choice_value[1] -= choice_constant * 1 * 1
+                        Choice_value[2] -= choice_constant * 8 * 1
+                        Choice_value[3] -= choice_constant * 2 * 1
+                        Choice_value[4] -= choice_constant * 4 * 2
+                    }
+
+                    else if (symbol_variable.includes(game.Board[z][w])){
+                        Choice_value[0] -= choice_constant * 1 * 1
+                        Choice_value[1] -= choice_constant * 1 * 1
+                        Choice_value[2] -= choice_constant * 8 * 2
+                        Choice_value[3] -= choice_constant * 2 * 0
+                        Choice_value[4] -= choice_constant * 4 * 1
+                    }
+                    else if (game.Board[z][w] == "￢"){
+                        Choice_value[0] -= choice_constant * 1 * 1
+                        Choice_value[1] -= choice_constant * 1 * 2
+                        Choice_value[2] -= choice_constant * 8 * 1
+                        Choice_value[3] -= choice_constant * 2 * 1
+                        Choice_value[4] -= choice_constant * 4 * 0
+                    }
+                    else if (symbol_connective2.includes(game.Board[z][w])){
+                        Choice_value[0] -= choice_constant * 1 * 1
+                        Choice_value[1] -= choice_constant * 1 * 1
+                        Choice_value[2] -= choice_constant * 8 * 0
+                        Choice_value[3] -= choice_constant * 2 * 2
+                        Choice_value[4] -= choice_constant * 4 * 1
+                    }
+                } 
             }
-            else if (symbol_choice <= 4) {
+
+            if (game.openbr < game.closebr){
+                Choice_value[1] -= choice_br_constant
+            }
+
+            if (game.openbr > game.closebr){
+                Choice_value[0] -= choice_br_constant
+            }
+
+            for (let i=0;i<5;i++){
+                if (Choice_value[i] < 0){
+                    Choice_value[i] = 0;
+                }
+            }
+
+            for (let i=1;i<5;i++){
+                Choice_value[i] += Choice_value[i-1];
+            }
+
+            let symbol_choice = Math.floor(Math.random() * Choice_value[4])
+
+            if (symbol_choice < Choice_value[0]) {
+                board_randchoice = "(";
+                game.openbr += 1
+            }
+            else if (symbol_choice < Choice_value[1]) {
+                board_randchoice = ")";
+                game.closebr += 1
+            }
+            else if (symbol_choice < Choice_value[2]) {
                 board_randchoice = symbol_variable[Math.floor(Math.random() * symbol_variable.length)];
             }
-            else if (symbol_choice <= 5) {
-                board_randchoice = symbol_connective1[Math.floor(Math.random() * symbol_connective1.length)];
+            else if (symbol_choice < Choice_value[3]) {
+                board_randchoice = "￢";
             }
-            else if (symbol_choice <= 7) {
+            else if (symbol_choice < Choice_value[4]) {
                 board_randchoice = symbol_connective2[Math.floor(Math.random() * symbol_connective2.length)];
             }
 
-            if (Board[y][x]==""){
-                Board[y][x] = board_randchoice;
-            }
+            Board[y][x] = board_randchoice;
         }
     }
     return Board;
@@ -203,7 +288,7 @@ function timer_plus() {
 function gametimer_wait(){
     game.timewait -= 1;
     whitecanvas();
-    masume_color("whitesmoke");
+    masume_color("whitesmoke","whitesmoke");
     formulas_color_update("#CCCCCC");
 
     ctx.fillStyle = "#111111";
@@ -215,7 +300,7 @@ function gametimer_wait(){
         game.status = 1;
         game.timewait = 3;
         whitecanvas();
-        masume_color("whitesmoke");
+        masume_color("whitesmoke","whitesmoke");
         formulas_color_update("#CCCCCC");
         gamestart();
     }
@@ -228,7 +313,7 @@ function mousedownfunc(event) {
         game.Board = random_board(game.Board);
 
         whitecanvas();
-        masume_color("whitesmoke");
+        masume_color("whitesmoke","whitesmoke");
         formulas_color_update("#CCCCCC");
 
         ctx.fillStyle = "#111111";
@@ -264,10 +349,16 @@ function whitecanvas(){
 }
 
 // 全てのマスの背景をcolor_nameで塗る
-function masume_color(color_name){
+function masume_color(color_name1, color_name2){
     for (let y = 0; y < masume; y++) {
         for (let x = 0; x < masume; x++) {
-            masume_board_color(y,x,color_name)
+            console.log(game.Board);
+            if (symbol_variable.includes(game.Board[y][x])) {
+                masume_board_color(y,x,color_name1)
+            }
+            else{
+                masume_board_color(y,x,color_name2)
+            }
         }
     }
 }
@@ -287,7 +378,12 @@ function bomb(){
     let appearcolor=toHex(game.bombcount+55)
 
     for (c of game.choices_list){
-        masume_board_color(c[0],c[1],"azure");
+        if (symbol_variable.includes(game.Board[c[0]][c[1]])){
+            masume_board_color(c[0],c[1],"#F0FFFF");
+        }
+        else{
+            masume_board_color(c[0],c[1],"#F0FFF0");
+        }
         board_text(c[0],c[1],"#" + appearcolor + appearcolor + appearcolor);
     }
 
@@ -312,13 +408,18 @@ function mouseupfunc(event) {
         // トートロジーならスコアを増やす
         if (tautjudge == 1) {
             if (made_formula in game.Erased_formulas){
-                game.Erased_formulas[made_formula]+=1;
-                game.score += 1
-            }
-            else{
-                game.Erased_formulas[made_formula]=1;
-                game.score += made_formula.length;
-            }
+                    game.Erased_formulas[made_formula]+=1;
+                    if (game.status == 1){
+                        game.score += 1
+                    }
+                }
+                else{
+                    game.Erased_formulas[made_formula]=1;
+                    if (game.status == 1){
+                        game.score += made_formula.length;
+                    }
+                }
+
 
             erased_div.innerHTML = "erased formulae: <br>"
 
@@ -327,6 +428,12 @@ function mouseupfunc(event) {
             }
 
             for (c of game.choices_list) {
+                if (game.Board[c[0]][c[1]] == "("){
+                    game.openbr -= 1
+                }
+                if (game.Board[c[0]][c[1]] == ")"){
+                    game.closebr -= 1
+                }
                 game.Board[c[0]][c[1]] = "";
             }
 
@@ -336,7 +443,7 @@ function mouseupfunc(event) {
 
             setTimeout(() => {
                 whitecanvas();
-                masume_color("azure");
+                masume_color("#F0FFFF", "#F0FFF0");
                 formulas_color_update("#000000");
 
                 game.choices_list = [];
@@ -348,7 +455,7 @@ function mouseupfunc(event) {
             game.Used = initial_used_make();
             game.choices_list = [];
             whitecanvas();
-            masume_color("azure");
+            masume_color("#F0FFFF", "#F0FFF0");
             formulas_color_update("#000000");
             score_div.textContent = "score: " + game.score;
         }
@@ -380,13 +487,13 @@ function mousemovefunc(event) {
 }
 
 // タイトル画面
-title_screen();
 game.Board = initial_board_make()
 game.Board = random_board(game.Board);
+title_screen();
 formulas_color_update("#CCCCCC");
 
 function gamestart() {
-    masume_color("azure");
+    masume_color("#F0FFFF", "#F0FFF0");
     formulas_color_update("#000000");
     game.score = 0;
     game.time = 60;
@@ -552,6 +659,9 @@ function classical_tautology_judge(formula) {
     return 0;
 }
 
+const pattern1 = new RegExp(symbol_variable[0], "g");
+const pattern2 = new RegExp(symbol_variable[1], "g");
+
 function taut_judge_formula(formula) {
     let tautjudge = 1;
     if (pp_judge(formula) == 0) {
@@ -563,8 +673,8 @@ function taut_judge_formula(formula) {
             break;
         }
         for (let q of ['0', '1']) {
-            let formula_p = formula.replace(/p/g, p);
-            let formula_pq = formula_p.replace(/q/g, q);
+            let formula_p = formula.replace(pattern1, p);
+            let formula_pq = formula_p.replace(pattern2, q);
 
             if (classical_tautology_judge(formula_pq) == 0) {
                 tautjudge = 0;
