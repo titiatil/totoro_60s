@@ -5,16 +5,30 @@ let width = canvas.width;
 let height = canvas.height;
 let masume = 10; // 10*10のマス目
 
+if (localStorage.getItem("localhighscore_easy") === null){
+    localStorage.setItem("localhighscore_easy", 0);
+}
+if (localStorage.getItem("localhighscore_normal") === null){
+    localStorage.setItem("localhighscore_normal", 0);
+}
+if (localStorage.getItem("localhighscore_hard") === null){
+    localStorage.setItem("localhighscore_hard", 0);
+}
+
 // 各記号
 const symbol_open_bracket = ["("];
 const symbol_close_bracket = [")"];
 const symbol_variable = ["p", "q"]; // とりあえず命題変数は二つにしている。いずれ三つ以上に拡張するならこの書き方は良くないが。
+const symbol_variable_hard = ["p", "q", "r"];
 const symbol_connective1 = ["￢"];
+const arrow_connective = ["→"];
 const symbol_connective2 = ["→", "∧", "∨"];
+const symbol_connective2_easy = ["→"];
 
 // gameに登場する記号たち
 const game = {
     status: 0, // 0:タイトル画面, 1:ゲーム画面, 2:ゲーム開始待ち, 3:ゲームオーバー
+    difficulty: "Normal", // Easy :0, Normal :1, Hard :2
     time: 60, // 60からカウント
     timecount: null,
     timewait: 3,
@@ -38,6 +52,11 @@ const game = {
     closebr:0
 }
 
+function texts_innerHTML_update(texts_div){
+    texts_div.innerHTML = "difficulty: " + game.difficulty + "</br>"+ "time: " + game.time + "</br>" + "score: " + game.score + "</br>" +
+    "highscore:" + " Easy " + localStorage.getItem("localhighscore_easy") + ", Normal " + localStorage.getItem("localhighscore_normal") + ", Hard " + localStorage.getItem("localhighscore_hard");
+}
+
 function title_screen() {
     masume_color("whitesmoke","whitesmoke");
 
@@ -56,37 +75,19 @@ function title_screen() {
     // div要素をHTMLドキュメントに追加
     document.body.appendChild(nowchoice_div);
 
-    const time_div = document.createElement("div");
+    const texts_div = document.createElement("div");
 
     // div要素に必要なプロパティを設定
-    time_div.id = "time_div";
-    time_div.className = "time";
-    time_div.textContent = "time: " + game.time;
+    texts_div.id = "texts_div";
+    texts_div.className = "texts";
+    texts_innerHTML_update(texts_div);
+    texts_div.style.position = 'absolute';
+    texts_div.style.left = '850px';
+    texts_div.style.top = '200px';
 
-    time_div.style.position = 'absolute';
-    time_div.style.left = '850px';
-    time_div.style.top = '100px';
+    texts_div.style.fontSize = '24px';
 
-    time_div.style.fontSize = '24px';
-
-    // div要素をHTMLドキュメントに追加
-    document.body.appendChild(time_div);
-
-    const score_div = document.createElement("div");
-
-    score_div.id = "score_div";
-    score_div.className = "score";
-    score_div.textContent = "score: " + game.score;
-
-    score_div.style.position = 'absolute';
-    score_div.style.left = '850px';
-    score_div.style.top = '150px';
-
-    score_div.style.fontSize = '24px';
-
-    // div要素をHTMLドキュメントに追加
-    document.body.appendChild(score_div);
-    game.Used = initial_used_make();
+    document.body.appendChild(texts_div);
 
     const erased_div = document.createElement("div");
 
@@ -95,7 +96,7 @@ function title_screen() {
 
     erased_div.style.position = 'absolute';
     erased_div.style.left = '850px';
-    erased_div.style.top = '250px';
+    erased_div.style.top = '400px';
 
     erased_div.style.fontSize = '24px';
 
@@ -103,6 +104,16 @@ function title_screen() {
     document.body.appendChild(erased_div);
 
     game.Used = initial_used_make();
+}
+
+// Click to start:Easy/Normal/Hardを表示
+function difficult_text(){
+    ctx.fillStyle = "darkgreen";
+    ctx.font = "bold 50px serif";
+    ctx.fillText("Click to start:",50 ,500);
+    ctx.fillText("・Easy",150 ,575);
+    ctx.fillText("・Normal",150 ,650);
+    ctx.fillText("・Hard",150 ,725);
 }
 
 // Board[y][x]のtextを表示
@@ -243,13 +254,23 @@ function random_board(Board) {
                 game.closebr += 1
             }
             else if (symbol_choice < Choice_value[2]) {
-                board_randchoice = symbol_variable[Math.floor(Math.random() * symbol_variable.length)];
+                if (game.difficulty == "Hard"){
+                    board_randchoice = symbol_variable_hard[Math.floor(Math.random() * symbol_variable_hard.length)];
+                }
+                else{
+                    board_randchoice = symbol_variable[Math.floor(Math.random() * symbol_variable.length)];
+                }
             }
             else if (symbol_choice < Choice_value[3]) {
                 board_randchoice = "￢";
             }
             else if (symbol_choice < Choice_value[4]) {
-                board_randchoice = symbol_connective2[Math.floor(Math.random() * symbol_connective2.length)];
+                if (game.difficulty == "Easy"){
+                    board_randchoice = symbol_connective2_easy[Math.floor(Math.random() * symbol_connective2_easy.length)];
+                }
+                else{
+                    board_randchoice = symbol_connective2[Math.floor(Math.random() * symbol_connective2.length)];
+                }
             }
 
             Board[y][x] = board_randchoice;
@@ -260,23 +281,53 @@ function random_board(Board) {
 
 // ゲーム終了後三秒間経ったらリスタートするように。
 function gameendtime_wait(){
+    if (game.difficulty=="Easy"){
+        if (localStorage.getItem("localhighscore_easy") < game.score){
+            localStorage.setItem("localhighscore_easy", game.score);
+        }
+    }
+    
+    if (game.difficulty=="Normal"){
+        if (localStorage.getItem("localhighscore_normal") < game.score){
+            localStorage.setItem("localhighscore_normal", game.score);
+        }
+    }
+    
+    if (game.difficulty=="Hard"){
+        if (localStorage.getItem("localhighscore_hard") < game.score){
+            localStorage.setItem("localhighscore_hard", game.score);
+        }
+    }
+
     game.gameend = 0;
     clearInterval(game.gameendtimecount);
     game.gameendtimecount = null;
+    masume_color("whitesmoke","whitesmoke");
+    formulas_color_update("#CCCCCC");
+    ctx.fillStyle = "#654321";
+    ctx.font = "bold 160px serif";
+    ctx.fillText(game.score, width/2 - 100 ,height/2 - 70);
+    ctx.font = "bold 80px serif";
+    ctx.fillText("points",width/2 - 120 ,height/2 + 10);
+
+    texts_innerHTML_update(texts_div)
+    difficult_text()
 }
+
 
 // ゲーム開始後の時間を制御
 function timer_plus() {
     game.time -= 1;
-    time_div.textContent =  "time: " + game.time;
-
+    texts_innerHTML_update(texts_div);
     if (game.time == 0) {
         clearInterval(game.timecount);
         game.time="-";
 
         ctx.fillStyle = "#654321";
         ctx.font = "bold 160px serif";
-        ctx.fillText(game.score + "点",width/2 - 150 ,height/2+40);
+        ctx.fillText(game.score, width/2 - 100 ,height/2 - 70);
+        ctx.font = "bold 80px serif";
+        ctx.fillText("points",width/2 - 120 ,height/2 + 10);
 
         game.status = 0;
         game.gameend = 1;
@@ -308,7 +359,22 @@ function gametimer_wait(){
 
 addEventListener('mousedown', mousedownfunc);
 function mousedownfunc(event) {
-    if (game.status == 0 && game.gameend == 0) {
+    game.y = event.clientY;
+    game.x = event.clientX;
+
+    console.log(game.y,game.x)
+
+    if (game.status == 0 && game.gameend == 0 && ((game.y>=555 && game.y<580)||(game.y>=630 && game.y<655)||(game.y>=705 && game.y<730)) && game.x>=215 && game.x<400) {
+        if (game.y>=555 && game.y<580){
+            game.difficulty="Easy";
+        }
+        if (game.y>=630 && game.y<655){
+            game.difficulty="Normal";
+        }
+        if (game.y>=705 && game.y<730){
+            game.difficulty="Hard";
+        }
+
         game.Board = initial_board_make();
         game.Board = random_board(game.Board);
 
@@ -316,6 +382,7 @@ function mousedownfunc(event) {
         masume_color("whitesmoke","whitesmoke");
         formulas_color_update("#CCCCCC");
 
+        texts_innerHTML_update(texts_div);
         ctx.fillStyle = "#111111";
         ctx.font = "bold 320px serif";
         ctx.fillText(game.timewait,width/2 - 100 ,height/2 + 120);
@@ -344,7 +411,7 @@ function mousedownfunc(event) {
 
 // 全体を白にする。
 function whitecanvas(){
-    ctx.fillStyle = "white";
+    ctx.fillStyle = "#FAFAFA";
     ctx.fillRect(0, 0, width, height);
 }
 
@@ -386,9 +453,9 @@ function bomb(){
         board_text(c[0],c[1],"#" + appearcolor + appearcolor + appearcolor);
     }
 
-    game.bombcount-=10
+    game.bombcount-=16
 
-    if (game.bombcount == 0){
+    if (game.bombcount <= 0){
         game.bombcount = 200;
         clearInterval(game.bomb);
     }
@@ -397,6 +464,9 @@ function bomb(){
 addEventListener('mouseup', mouseupfunc);
 function mouseupfunc(event) {
     nowchoice_div.textContent = ""
+    if (game.time=="-"){
+        difficult_text();
+    }
 
     if (game.choice == 1) {
         game.choice = 0;
@@ -419,11 +489,14 @@ function mouseupfunc(event) {
                     }
                 }
 
-
             erased_div.innerHTML = "erased formulae: <br>"
 
             for (let eformula in game.Erased_formulas){
-                erased_div.innerHTML+= eformula + ": " + game.Erased_formulas[eformula] + "<br>"
+                if (1 < game.Erased_formulas[eformula]){
+                    erased_div.innerHTML+= eformula + ": " + game.Erased_formulas[eformula] + "<br>"}
+                else{
+                    erased_div.innerHTML+= eformula + "<br>"
+                }
             }
 
             for (c of game.choices_list) {
@@ -438,7 +511,7 @@ function mouseupfunc(event) {
 
             game.Board = random_board(game.Board);
             game.Used = initial_used_make();
-            game.bomb = setInterval(bomb, 10);
+            game.bomb = setInterval(bomb, 16);
 
             setTimeout(() => {
                 whitecanvas();
@@ -447,7 +520,7 @@ function mouseupfunc(event) {
 
                 game.choices_list = [];
             }, 200);
-            score_div.textContent = "score: " + game.score;
+            texts_innerHTML_update(texts_div);
         }
 
         else{
@@ -456,7 +529,7 @@ function mouseupfunc(event) {
             whitecanvas();
             masume_color("#F0FFFF", "#F0FFF0");
             formulas_color_update("#000000");
-            score_div.textContent = "score: " + game.score;
+            texts_innerHTML_update(texts_div);
         }
     }
 }
@@ -490,6 +563,7 @@ game.Board = initial_board_make()
 game.Board = random_board(game.Board);
 title_screen();
 formulas_color_update("#CCCCCC");
+difficult_text();
 
 function gamestart() {
     masume_color("#F0FFFF", "#F0FFF0");
@@ -660,6 +734,7 @@ function classical_tautology_judge(formula) {
 
 const pattern1 = new RegExp(symbol_variable[0], "g");
 const pattern2 = new RegExp(symbol_variable[1], "g");
+const pattern3 = new RegExp(symbol_variable_hard[2], "g");
 
 function taut_judge_formula(formula) {
     let tautjudge = 1;
@@ -667,19 +742,45 @@ function taut_judge_formula(formula) {
         tautjudge = 0;
     }
 
-    for (let p of ['0', '1']) {
-        if (tautjudge == 0) {
-            break;
-        }
-        for (let q of ['0', '1']) {
-            let formula_p = formula.replace(pattern1, p);
-            let formula_pq = formula_p.replace(pattern2, q);
-
-            if (classical_tautology_judge(formula_pq) == 0) {
-                tautjudge = 0;
+    if (game.difficulty=="Hard"){     
+        for (let p of ['0', '1']) {
+            if (tautjudge == 0) {
                 break;
             }
+            for (let q of ['0', '1']) {
+                if (tautjudge == 0) {
+                    break;
+                }
+                for (let r of ['0', '1']) {
+                    let formula_p = formula.replace(pattern1, p);
+                    let formula_pq = formula_p.replace(pattern2, q);
+                    let formula_pqr = formula_pq.replace(pattern3, r);
+
+                    if (classical_tautology_judge(formula_pqr) == 0) {
+                        tautjudge = 0;
+                        break;
+                    }
+                }
+            }
         }
+        return tautjudge;
     }
-    return tautjudge;
+    else{
+
+        for (let p of ['0', '1']) {
+            if (tautjudge == 0) {
+                break;
+            }
+            for (let q of ['0', '1']) {
+                let formula_p = formula.replace(pattern1, p);
+                let formula_pq = formula_p.replace(pattern2, q);
+
+                if (classical_tautology_judge(formula_pq) == 0) {
+                    tautjudge = 0;
+                    break;
+                }
+            }
+        }
+        return tautjudge;
+    }
 }
