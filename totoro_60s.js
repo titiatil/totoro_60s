@@ -362,8 +362,6 @@ function mousedownfunc(event) {
     game.y = event.clientY;
     game.x = event.clientX;
 
-    console.log(game.y,game.x)
-
     if (game.status == 0 && game.gameend == 0 && ((game.y>=555 && game.y<580)||(game.y>=630 && game.y<655)||(game.y>=705 && game.y<730)) && game.x>=215 && game.x<400) {
         if (game.y>=555 && game.y<580){
             game.difficulty="Easy";
@@ -464,7 +462,7 @@ function bomb(){
 addEventListener('mouseup', mouseupfunc);
 function mouseupfunc(event) {
     nowchoice_div.textContent = ""
-    if (game.time=="-" && game.timewait == 0){
+    if (game.time=="-" && game.status == 0){
         difficult_text();
     }
 
