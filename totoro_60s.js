@@ -464,7 +464,7 @@ function bomb(){
 addEventListener('mouseup', mouseupfunc);
 function mouseupfunc(event) {
     nowchoice_div.textContent = ""
-    if (game.time=="-"){
+    if (game.time=="-" && game.timewait == 0){
         difficult_text();
     }
 
